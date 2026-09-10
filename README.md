@@ -294,6 +294,22 @@ first differing JSON path if they do not (`$.ENCOUNTERS[3].OBSERVATIONS[7].VALUE
 fresh random `ObjectId` on every insert, so two correct builds always differ
 there and must be identical everywhere else.
 
+### Verified configurations
+
+| Server | How it ran | Build | Result |
+| --- | --- | --- | --- |
+| MongoDB 7.0.41 | Docker (`docker compose`) | 1,170.8 s | identical to a database built by upstream's own `setup-mongodb.py` (1,171.1 s) |
+| MongoDB 8.0.30 | **native, no Docker, no root** | 1,177.5 s | identical to the 7.0.41 build, document for document |
+
+Both report the same totals — 272,817 rows read, 267,548 embedded, 1,803 left in
+collections, 3,466 lost — and the full suite passes (71/71) against each. The
+second row was built through the [Quick start](#quick-start-no-docker) exactly as
+written, resolving `../SM3-Text-to-Query/data/synthea_data/` from the sibling
+layout with no configuration.
+
+So the output does not depend on the MongoDB version or on whether the server
+runs in a container.
+
 ## Layout
 
 | Path | What |
