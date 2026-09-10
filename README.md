@@ -8,14 +8,45 @@ defects. This is deliberate. The point is to be able to rebuild *the database th
 benchmark actually queries*, not a corrected one — a corrected database would not
 match the published results, and the difference would be invisible.
 
-Nothing is vendored: point `config.yml` at an existing SM3 checkout's
-`data/synthea_data/`.
+## Prerequisite: you also need the upstream repository
+
+**Nothing is vendored here — this repository does not work on its own.** Clone
+[SM3-Text-to-Query](https://github.com/jf87/SM3-Text-to-Query) as well. It supplies
+two things this repository deliberately does not carry a copy of:
+
+| From the upstream checkout | Needed for | Why not vendored |
+| --- | --- | --- |
+| `data/synthea_data/` — the 19 Synthea CSVs (81 MB) | `build` | 81 MB against ~200 KB of code, and it would silently go stale if the maintainers publish a fuller export |
+| `src/setup_dbs/mongodb/setup-mongodb.py` | the parity tests | the point is to compare against *their* copy, not a snapshot of it |
+
+Clone it as a **sibling directory** and every default path resolves with no
+configuration:
+
+```bash
+git clone https://github.com/jf87/SM3-Text-to-Query.git   # sibling of this repo
+git clone https://github.com/nnarodytska/sm3-mongodb.git
+
+# ./SM3-Text-to-Query/
+# ./sm3-mongodb/          <- run everything from here
+```
+
+Anywhere else, point at it explicitly:
+
+```bash
+export SM3_CSV_DIR=/path/to/SM3-Text-to-Query/data/synthea_data
+export SM3_UPSTREAM_REPO=/path/to/SM3-Text-to-Query   # parity tests only
+```
+
+`SM3_CSV_DIR` overrides `basepath` in `config.yml`; `SM3_UPSTREAM_REPO` is read by
+`tests/conftest.py`. Without the upstream checkout, `build` exits with
+`CSV directory not found` and the 38 parity tests **skip rather than fail** — so a
+green test run does not by itself prove they ran. `plan` needs neither.
 
 ## Quick start
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-$EDITOR config.yml                         # set basepath to your CSV directory
+$EDITOR config.yml                         # or set SM3_CSV_DIR
 .venv/bin/python -m sm3_mongo build --drop-existing
 .venv/bin/python -m sm3_mongo verify
 ```
