@@ -1,0 +1,9 @@
+# Same keys as upstream src/setup_dbs/mongodb/config_mongodb.yml.
+# Each can be overridden by an environment variable:
+#   SM3_MONGO_URI, SM3_MONGO_DB, SM3_CSV_DIR
+server_uri: mongodb://localhost:27017/
+database: sm3
+
+# Directory holding the 19 Synthea CSVs. Nothing is vendored into this repo;
+# point this at the SM3-Text-to-Query checkout's data/synthea_data/.
+basepath: ../SM3-Text-to-Query/data/synthea_data/

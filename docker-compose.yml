@@ -1,0 +1,13 @@
+# A MongoDB to load into. The upstream repo's compose file starts four
+# databases; this one starts only what this repo needs.
+services:
+  mongodb:
+    image: mongo:7
+    container_name: sm3-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - sm3-mongo-data:/data/db
+
+volumes:
+  sm3-mongo-data:
