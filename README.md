@@ -212,6 +212,7 @@ there and must be identical everywhere else.
 | `sm3_mongo/verify.py` | read-only report of a built database |
 | `sm3_mongo/compare.py` | document-by-document equality against another build |
 | `sm3_mongo/cli.py` | `build` / `verify` / `plan` / `compare` |
+| `docs/mongodb-schema-and-data.md` | analysis of the upstream loader: the four defects, row loss, field coverage |
 
 ## Tests
 
