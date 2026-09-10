@@ -42,34 +42,28 @@ export SM3_UPSTREAM_REPO=/path/to/SM3-Text-to-Query   # parity tests only
 `CSV directory not found` and the 38 parity tests **skip rather than fail** — so a
 green test run does not by itself prove they ran. `plan` needs neither.
 
-## Quick start
+## Quick start (no Docker)
+
+Complete path from nothing to a verified database. **Docker is not used or needed
+anywhere below.**
+
+**1. Clone both repositories as siblings.**
+
+```bash
+git clone https://github.com/jf87/SM3-Text-to-Query.git
+git clone https://github.com/nnarodytska/sm3-mongodb.git
+cd sm3-mongodb
+```
+
+**2. Python dependencies** (`pymongo`, `PyYAML`, `tqdm` — no database driver beyond
+pymongo, no Docker SDK):
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-$EDITOR config.yml                         # or set SM3_CSV_DIR
-.venv/bin/python -m sm3_mongo build --drop-existing
-.venv/bin/python -m sm3_mongo verify
 ```
 
-`plan` needs neither a database nor the CSVs, and prints exactly what a build
-would do:
-
-```bash
-.venv/bin/python -m sm3_mongo plan
-```
-
-Configuration is `config.yml` (same keys as upstream's `config_mongodb.yml`),
-overridable by `SM3_MONGO_URI`, `SM3_MONGO_DB` and `SM3_CSV_DIR`.
-
-## Getting a MongoDB
-
-**Docker is optional.** This repo needs a reachable MongoDB and nothing more; it
-never shells out to `docker`, and `docker-compose.yml` is a convenience, not a
-dependency. Any of these works.
-
-### Option A — local install (no Docker)
-
-Ubuntu 24.04 does not ship MongoDB in its own repositories, so use MongoDB's:
+**3. Install MongoDB locally.** Ubuntu 24.04 dropped MongoDB from its own
+repositories, so add MongoDB's. Verified against Ubuntu 24.04 (noble), amd64:
 
 ```bash
 sudo apt-get install -y gnupg curl
@@ -82,10 +76,77 @@ sudo apt-get update && sudo apt-get install -y mongodb-org
 sudo systemctl enable --now mongod
 ```
 
-That listens on `localhost:27017` with no auth, which is what `config.yml`
-already points at — nothing else to change.
+On any other platform, follow
+[MongoDB's install guide](https://www.mongodb.com/docs/manual/administration/install-community/)
+— anything listening on `localhost:27017` without auth works, and nothing in this
+repository depends on how it got there.
 
-### Option B — Docker
+**4. Confirm it is up.** `mongod` listens on `localhost:27017` with no auth, which
+is exactly what `config.yml` already points at, so there is nothing to configure:
+
+```bash
+systemctl is-active mongod                            # -> active
+mongosh --quiet --eval 'db.runCommand({ping:1}).ok'   # -> 1
+```
+
+(`mongosh` arrives with `mongodb-org`, which depends on `mongodb-mongosh`.)
+
+**5. Build and inspect.** The build issues one `update_one` per row — 270,626 of
+them, of which 267,548 match — because that is what upstream does, so **budget
+roughly 20 minutes** (measured: 1,171 s here, and upstream's own script took 1,171 s
+on the same data):
+
+```bash
+.venv/bin/python -m sm3_mongo build --drop-existing
+.venv/bin/python -m sm3_mongo verify
+```
+
+`verify` should report 5 collections with `EXPENSES` and `ENCOUNTERS.CAREPLANS`
+empty. That is correct — see [Reproduced upstream defects](#reproduced-upstream-defects).
+
+**6. Run the tests** (optional; needs the upstream checkout from step 1):
+
+```bash
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest tests/ -q                  # 71 passed
+```
+
+### Managing the local mongod
+
+```bash
+sudo systemctl {start,stop,restart,status} mongod
+sudo journalctl -u mongod -n 50                  # logs, if it will not start
+```
+
+Data lives in `/var/lib/mongodb`. To drop just these databases without touching
+the install:
+
+```bash
+mongosh --quiet --eval 'db.getSiblingDB("sm3").dropDatabase()'
+```
+
+To remove MongoDB entirely: `sudo apt-get purge -y mongodb-org*` and, if you also
+want the data gone, `sudo rm -rf /var/lib/mongodb`.
+
+### Without installing anything
+
+`plan` needs no database and no CSVs, and prints exactly what a build would do:
+
+```bash
+.venv/bin/python -m sm3_mongo plan
+```
+
+Configuration is `config.yml` (same keys as upstream's `config_mongodb.yml`),
+overridable by `SM3_MONGO_URI`, `SM3_MONGO_DB` and `SM3_CSV_DIR`.
+
+## Other ways to get a MongoDB
+
+The step above is one option, not a requirement. This repository never shells out
+to `docker`, never starts a server itself, and has no opinion about where MongoDB
+came from — it needs a reachable one and nothing else. `docker-compose.yml` is a
+convenience for people who prefer containers, not a dependency.
+
+### Docker
 
 ```bash
 docker compose up -d          # mongo:7 on :27017
@@ -94,7 +155,7 @@ docker compose up -d          # mongo:7 on :27017
 Data lives in the named volume `sm3-mongo-data` and survives `stop`/`start`.
 `docker compose down -v` destroys it, and a rebuild costs roughly 20 minutes.
 
-### Option C — the MongoDB the SM3 repo already runs
+### The MongoDB the SM3 repo already runs
 
 The upstream `docker-compose.yml` starts `mongo:6.0` on port **27018** with auth:
 
